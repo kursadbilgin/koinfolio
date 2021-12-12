@@ -1,0 +1,19 @@
+version: "3.7"
+
+
+services:
+  api:
+    build: .
+    image: koinfolio
+    container_name: koinfolio
+    ports:
+      - "8090:8090"
+    tty: true
+    depends_on:
+      - mongo
+
+  mongo:
+    image: bitnami/mongodb:latest
+    container_name: mongo
+    ports:
+      - "27017:27017"
