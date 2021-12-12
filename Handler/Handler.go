@@ -18,9 +18,13 @@ func AddCoin(c *gin.Context) {
 	if err := c.ShouldBindJSON(&request); err != nil {
 		return
 	}
-	resp := CoinMarketCapAPI(request.Amount, request.CoinCode)
+	resp, errApi := CoinMarketCapAPI(request.Amount, request.CoinCode)
+	if errApi != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": errApi.Error()})
+		return
+	}
 	if !Utils.ValidateResponse(resp.Status) {
-		c.JSON(http.StatusBadRequest, resp.Status)
+		c.JSON(http.StatusBadRequest, gin.H{"Error:": "Not valid", "Message": resp.Status.ErrorMessage})
 		return
 	}
 	dbRecord := Models.DbCoinRecord{
@@ -31,8 +35,35 @@ func AddCoin(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	_, err := Models.Collection.InsertOne(ctx, dbRecord)
+	_, err := Models.CoinPortfolioCollection.InsertOne(ctx, dbRecord)
 	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"ERROR": err.Error()})
+		return
+	}
+
+	historyNew := Models.CoinHistory{
+		ID:   dbRecord.ID,
+		Code: resp.Data.Symbol,
+		History: []Models.History{
+			{
+				Amount: dbRecord.Amount,
+				Price: Models.Price{
+					Old:     dbRecord.Price,
+					Current: dbRecord.Price,
+				},
+			},
+			{
+				Amount: dbRecord.Amount,
+				Price: Models.Price{
+					Old:     dbRecord.Price,
+					Current: dbRecord.Price,
+				},
+			},
+		},
+	}
+	_, err = Models.HistoryCollection.InsertOne(ctx, historyNew)
+	if err != nil {
+		fmt.Println("asd")
 		c.JSON(http.StatusInternalServerError, gin.H{"ERROR": err.Error()})
 		return
 	}
@@ -44,18 +75,22 @@ func GetCoinByID(c *gin.Context) {
 	id := c.Param("id")
 
 	ctx := context.Background()
-	var coins []Models.DbCoinRecord
-	searchResult, err := Models.Collection.Find(ctx, bson.M{"id": id})
+	var coins []Models.CoinHistory
+	searchResult, err := Models.HistoryCollection.Find(ctx, bson.M{"id": id})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"ERROR": err.Error()})
 		return
 	}
 
 	defer searchResult.Close(ctx)
-
 	if err = searchResult.All(ctx, &coins); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"ERROR": err.Error()})
 		return
+	}
+
+	for idx, _ := range coins[0].History {
+		respOld, _ := CoinMarketCapAPI(coins[0].History[idx].Amount, coins[0].Code)
+		coins[0].History[idx].Price.Current = fmt.Sprintf("%f", respOld.Data.Quote.USD.Price)
 	}
 
 	c.JSON(http.StatusOK, coins)
@@ -66,7 +101,7 @@ func GetCoins(c *gin.Context) {
 	ctx := context.Background()
 	var coins []Models.DbCoinRecord
 
-	cursor, err := Models.Collection.Find(context.TODO(), bson.M{})
+	cursor, err := Models.CoinPortfolioCollection.Find(context.TODO(), bson.M{})
 	defer cursor.Close(ctx)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"ERROR": err.Error()})
@@ -85,8 +120,8 @@ func DeleteCoin(c *gin.Context) {
 	id := c.Param("id")
 
 	ctx := context.Background()
-	var deletedCoin Models.DbCoinRecord
-	err := Models.Collection.FindOneAndDelete(ctx, bson.M{"id": id}).Decode(&deletedCoin)
+	var deletedCoin *Models.DbCoinRecord
+	err := Models.CoinPortfolioCollection.FindOneAndDelete(ctx, bson.M{"id": id}).Decode(deletedCoin)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			c.JSON(http.StatusNotModified, gin.H{"ERROR": err.Error()})
@@ -119,7 +154,11 @@ func EditCoin(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"ERROR": err.Error()})
 		return
 	}
-	resp := CoinMarketCapAPI(request.Amount, request.CoinCode)
+	resp, err := CoinMarketCapAPI(request.Amount, request.CoinCode)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
 	newData := Models.DbCoinRecord{
 		ID:       id,
 		Amount:   request.Amount,
@@ -127,18 +166,56 @@ func EditCoin(c *gin.Context) {
 		Price:    fmt.Sprintf("%f", resp.Data.Quote.USD.Price),
 	}
 	ctx := context.Background()
-	var updatedCoin Models.DbCoinRecord
-	opts := options.FindOneAndUpdate()
+	var getCoin Models.DbCoinRecord
 	filter := bson.M{"id": id}
-	update := bson.D{{Key: "$set", Value: newData}}
-	err = Models.Collection.FindOneAndUpdate(ctx, filter, update, opts).Decode(&updatedCoin)
+	err = Models.CoinPortfolioCollection.FindOne(ctx, filter).Decode(&getCoin)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			c.JSON(http.StatusNotModified, gin.H{"ERROR": err.Error()})
-			return
-
-		}
 		c.JSON(http.StatusInternalServerError, gin.H{"ERROR": err.Error()})
+		return
+	}
+
+	opts := options.Update().SetUpsert(false)
+	update := bson.D{{Key: "$set", Value: newData}}
+	_, err = Models.CoinPortfolioCollection.UpdateOne(ctx, filter, update, opts)
+	if err == mongo.ErrNoDocuments {
+		c.JSON(http.StatusNotModified, gin.H{"ERROR": err.Error()})
+		return
+	}
+	var history Models.CoinHistory
+
+	err = Models.HistoryCollection.FindOne(ctx, bson.M{"id": id}).Decode(&history)
+	if err != nil {
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"ERROR": err.Error()})
+			return
+		}
+	}
+
+	historyNew := Models.CoinHistory{
+		ID:   id,
+		Code: resp.Data.Symbol,
+		History: []Models.History{
+			{
+				Amount: getCoin.Amount,
+				Price: Models.Price{
+					Old:     getCoin.Price,
+					Current: "",
+				},
+			},
+			{
+				Amount: newData.Amount,
+				Price: Models.Price{
+					Old:     newData.Price,
+					Current: "",
+				},
+			},
+		},
+	}
+
+	updateHistory := bson.D{{Key: "$set", Value: historyNew}}
+	_, err = Models.HistoryCollection.UpdateOne(ctx, filter, updateHistory, opts)
+	if err == mongo.ErrNoDocuments {
+		c.JSON(http.StatusNotModified, gin.H{"ERROR": err.Error()})
 		return
 	}
 

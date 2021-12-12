@@ -5,16 +5,24 @@ import (
 	"time"
 )
 
-var (
-	InMemDB            = make(map[string]string)
-	KeyError           = "The 'key' is required."
-	KeyNotFoundError   = "The key '%s' could not be found."
-	ValueError         = "The 'value' is required."
-	SetResponsePattern = "The value '%s' is stored with the key '%s'."
-	FlushResponse      = "All data has been deleted."
-)
+var CoinPortfolioCollection *mongo.Collection
+var HistoryCollection *mongo.Collection
 
-var Collection *mongo.Collection
+type CoinHistory struct {
+	ID      string    `json:"id"`
+	Code    string    `json:"code"`
+	History []History `json:"history"`
+}
+
+type History struct {
+	Amount int   `json:"amount"`
+	Price  Price `json:"price"`
+}
+
+type Price struct {
+	Old     string `json:"old"`
+	Current string `json:"current"`
+}
 
 type AddCoinRequest struct {
 	Amount   int    `json:"amount"`

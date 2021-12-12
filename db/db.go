@@ -25,5 +25,7 @@ func InitMongoDB() {
 		log.Fatal(err)
 	}
 
-	Models.Collection = newClient.Database("portfolio").Collection("coin_portfolio")
+	quickstartDatabase := newClient.Database("portfolio")
+	Models.CoinPortfolioCollection = quickstartDatabase.Collection("coin_portfolio")
+	Models.HistoryCollection = quickstartDatabase.Collection("history")
 }

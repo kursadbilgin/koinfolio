@@ -2,22 +2,18 @@ package Handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"koinfolio/Models"
-	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 )
 
-func CoinMarketCapAPI(amount int, code string) (response Models.APIResponse) {
+func CoinMarketCapAPI(amount int, code string) (response *Models.APIResponse, err error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", "https://pro-api.coinmarketcap.com/v1/tools/price-conversion", nil)
 	if err != nil {
-		log.Print(err)
-		os.Exit(1)
+		return nil, err
 	}
 
 	q := url.Values{}
@@ -30,17 +26,14 @@ func CoinMarketCapAPI(amount int, code string) (response Models.APIResponse) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("Error sending request to server")
-		os.Exit(1)
+		return nil, err
 	}
 
 	respBody, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println(string(respBody))
 	err = json.Unmarshal(respBody, &response)
 	if err != nil {
-		fmt.Println("Error", err.Error())
-		os.Exit(1)
+		return nil, err
 	}
 
-	return response
+	return response, nil
 }
