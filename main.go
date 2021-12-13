@@ -9,5 +9,5 @@ func main() {
 	db.InitMongoDB()
 	r := Routers.SetupRouter()
 
-	r.Run(":8080")
+	r.Run(":8090")
 }

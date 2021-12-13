@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"koinfolio/Api"
 	"koinfolio/Logger"
 	"koinfolio/Models"
 	"koinfolio/Utils"
@@ -19,7 +20,7 @@ func AddCoin(c *gin.Context) {
 	if err := c.ShouldBindJSON(&request); err != nil {
 		return
 	}
-	resp, errApi := Utils.CoinMarketCapAPI(request.Amount, request.CoinCode)
+	resp, errApi := Api.CoinMarketCapAPI(request.Amount, request.CoinCode)
 	if errApi != nil {
 		Logger.Error.Println(errApi)
 		c.JSON(http.StatusBadRequest, gin.H{"Error[1]": "Bad request"})
@@ -89,7 +90,7 @@ func GetCoinByID(c *gin.Context) {
 		return
 	}
 	for idx, _ := range coins[0].History {
-		respOld, err := Utils.CoinMarketCapAPI(coins[0].History[idx].Amount, coins[0].Code)
+		respOld, err := Api.CoinMarketCapAPI(coins[0].History[idx].Amount, coins[0].Code)
 		if err != nil {
 			Logger.Error.Println(err)
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": "server error"})
@@ -123,7 +124,7 @@ func GetCoins(c *gin.Context) {
 
 	for id, _ := range coins {
 		for idx, _ := range coins[id].History {
-			respOld, err := Utils.CoinMarketCapAPI(coins[id].History[idx].Amount, coins[id].Code)
+			respOld, err := Api.CoinMarketCapAPI(coins[id].History[idx].Amount, coins[id].Code)
 			if err != nil {
 				Logger.Error.Println(err)
 				c.JSON(http.StatusInternalServerError, gin.H{"Error": "server error"})
@@ -192,7 +193,7 @@ func EditCoin(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"ERROR": "server error"})
 		return
 	}
-	resp, err := Utils.CoinMarketCapAPI(request.Amount, request.CoinCode)
+	resp, err := Api.CoinMarketCapAPI(request.Amount, request.CoinCode)
 	if err != nil {
 		Logger.Error.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "bad request"})

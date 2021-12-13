@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"koinfolio/Models"
+	"os"
 )
 
 func HistoryCreate(ctx *context.Context, id, symbol string, dbRecord, newRecord *Models.DbCoinRecord) (err error) {
@@ -75,4 +76,11 @@ func HistoryCreate(ctx *context.Context, id, symbol string, dbRecord, newRecord 
 	}
 
 	return nil
+}
+
+func GetEnv(key string, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
 }

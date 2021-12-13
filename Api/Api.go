@@ -1,8 +1,9 @@
-package Utils
+package Api
 
 import (
 	"encoding/json"
 	"io/ioutil"
+	"koinfolio/Config"
 	"koinfolio/Models"
 	"net/http"
 	"net/url"
@@ -11,7 +12,7 @@ import (
 
 func CoinMarketCapAPI(amount int, code string) (response *Models.APIResponse, err error) {
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", "https://pro-api.coinmarketcap.com/v1/tools/price-conversion", nil)
+	req, err := http.NewRequest("GET", Config.CoinMarketCapApiUrl, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -21,7 +22,7 @@ func CoinMarketCapAPI(amount int, code string) (response *Models.APIResponse, er
 	q.Add("symbol", code)
 
 	req.Header.Set("Accepts", "application/json")
-	req.Header.Add("X-CMC_PRO_API_KEY", "30593477-b629-4f2b-bbb5-6a95d8e88211")
+	req.Header.Add("X-CMC_PRO_API_KEY", Config.CoinMarketCapApiKey)
 	req.URL.RawQuery = q.Encode()
 
 	resp, err := client.Do(req)
