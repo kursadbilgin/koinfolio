@@ -2,6 +2,10 @@
 
 A rest-api that works with golang as coin portfolio
 
+# Technical Details
+- Golang/Gin is used as application framework
+- MongoDB is database
+
 ## Usage
 
 Fist of all, clone the repo with the command below. You must have golang installed on your computer to run the project.
