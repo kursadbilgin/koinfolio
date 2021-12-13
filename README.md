@@ -10,18 +10,6 @@ Fist of all, clone the repo with the command below. You must have golang install
 git clone https://github.com/kursadbilgin/koinfolio
 ```
 
-+ ### Locally
-
-Set the **`COIN_MARKET_CAP_API_URL`**, **`COIN_MARKET_CAP_API_KEY`** environments. And run command below in terminal in
-project directory.
-
-```shell
-go run main.go
-```
-
-Now, you can send requests to the application either via postman, swagger or browser (GET requests only) according to
-the following endpoint table.
-
 + ### With Docker
 
 If you have docker installed on your system, you can run the project with docker. Run command below on terminal.
@@ -31,7 +19,7 @@ docker-compose -f docker-compose.yml build
 docker-compose up -d
 ````
 
-Now go to `localhost:8090` in your browser. You will see the swagger page. Here you can send your requests to api.
+Now go to `localhost:8090` in your browser. Here you can send your requests to api.
 
 or you can test the api on the URL below.
 
