@@ -207,10 +207,11 @@ func EditCoin(c *gin.Context) {
 	}
 	ctx := context.Background()
 	var getCoin Models.DbCoinRecord
-	err = Models.CoinPortfolioCollection.FindOne(ctx, bson.M{"id": id}).Decode(&getCoin)
+	err = Models.CoinPortfolioCollection.FindOne(
+		ctx, bson.M{"id": id, "coin_code": resp.Data.Symbol}).Decode(&getCoin)
 	if err != nil {
 		Logger.Error.Println(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"Error": "server error"})
+		c.JSON(http.StatusNotFound, gin.H{"Error": "Currency with that id does not exist"})
 		return
 	}
 
